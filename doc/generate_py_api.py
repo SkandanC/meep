@@ -138,25 +138,23 @@ class FunctionItem(Item):
         try:
             # Try using the AST to get the actual text for default values
             parameters = self.get_parameters_from_ast()
-            param_str = "({})".format(", ".join(parameters))
+            param_str = f'({", ".join(parameters)})'
 
             # Wrap and indent the parameters if the line is too long
             if len(param_str) > 50:
-                params = []
-                for idx, param in enumerate(parameters):
-                    params.append(
-                        "(" + str(param) if idx == 0 else " " * indent + param
-                    )
-                param_str = ",\n".join(params)
-                param_str += ")"
+                params = [
+                    f"({str(param)}" if idx == 0 else " " * indent + param
+                    for idx, param in enumerate(parameters)
+                ]
+
+                param_str = ",\n".join(params) + ")"
             return param_str
 
         except ValueError as ex:
             print(
-                "Warning: falling back to old parameter extraction method for {}\n{}".format(
-                    self.name, ex
-                )
+                f"Warning: falling back to old parameter extraction method for {self.name}\n{ex}"
             )
+
         except OSError:
             # This happens when there is no source for some function/class (like NamedTuples)
             pass
@@ -167,13 +165,12 @@ class FunctionItem(Item):
         # Wrap and indent the parameters if the line is too long
         if len(param_str) > 50:
             parameters = list(self.sig.parameters.values())
-            params = []
-            for idx, param in enumerate(parameters):
-                params.append(
-                    "(" + str(param) if idx == 0 else " " * indent + str(param)
-                )
-            param_str = ",\n".join(params)
-            param_str += ")"
+            params = [
+                f"({str(param)}" if idx == 0 else " " * indent + str(param)
+                for idx, param in enumerate(parameters)
+            ]
+
+            param_str = ",\n".join(params) + ")"
         return param_str
 
     def get_parameters_from_ast(self):
@@ -281,7 +278,7 @@ class FunctionItem(Item):
         # pull relevant attributes into local variables
         function_name = self.name
         function_name_escaped = function_name.replace("_", "\\_")
-        docstring = self.docstring if self.docstring else ""
+        docstring = self.docstring or ""
         parameters = self.get_parameters(len(function_name) + 1)
         docstring, other_signatures = self.check_other_signatures(docstring)
 
@@ -308,7 +305,7 @@ class MethodItem(FunctionItem):
         class_name = self.klass.name
         method_name = self.method_name
         method_name_escaped = method_name.replace("_", "\\_")
-        docstring = self.docstring if self.docstring else ""
+        docstring = self.docstring or ""
         parameters = self.get_parameters(4 + len(method_name) + 1)
         docstring, other_signatures = self.check_other_signatures(docstring)
 
@@ -347,20 +344,22 @@ class ClassItem(Item):
     def create_markdown(self):
         # pull relevant attributes into local variables
         class_name = self.name
-        docstring = self.docstring if self.docstring else ""
+        docstring = self.docstring or ""
         base_classes = [base.__name__ for base in self.obj.__bases__]
         base_classes = ", ".join(base_classes)
 
-        # Substitute values into the template
-        docs = dict()
         class_doc = self.template.format(**locals())
-        docs[class_name] = class_doc
-        docs[class_name + "[all-methods]"] = (
-            class_doc + "\n" + self.create_method_markdown(False)
-        )
-        docs[class_name + "[methods-with-docstrings]"] = (
+        docs = {
+            class_name: class_doc,
+            f"{class_name}[all-methods]": class_doc
+            + "\n"
+            + self.create_method_markdown(False),
+        }
+
+        docs[f"{class_name}[methods-with-docstrings]"] = (
             class_doc + "\n" + self.create_method_markdown(True)
         )
+
 
         return docs
 
@@ -396,10 +395,10 @@ class ClassItem(Item):
 def check_excluded(name):
     if name in EXCLUDES:
         return True
-    if name.startswith("_") and not (name.startswith("__") and name.endswith("__")):
-        # It's probably meant to be private
-        return True
-    return False
+    return bool(
+        name.startswith("_")
+        and (not name.startswith("__") or not name.endswith("__"))
+    )
 
 
 def load_module(module):
@@ -425,7 +424,7 @@ def generate_docs(items):
     Process the items and create markdown from their docstrings, returned as a
     dictionary.
     """
-    docs = dict()
+    docs = {}
     for item in items:
         if not check_excluded(item.name):
             doc = item.create_markdown()

@@ -409,7 +409,7 @@ class Volume:
         """
         Construct a Volume.
         """
-        if len(vertices) == 0:
+        if not vertices:
             self.center = Vector3(*center)
             self.size = Vector3(*size)
         else:
@@ -1412,10 +1412,7 @@ class Simulation:
                 zero_z = self.cell_size.z == 0
                 return zero_z and (not k or self.special_kz or k.z == 0)
 
-            if use_2d(self, k):
-                return 2
-            else:
-                return 3
+            return 2 if use_2d(self, k) else 3
         elif self.dimensions == 2 and self.is_cylindrical:
             return mp.CYLINDRICAL
         return self.dimensions
@@ -1447,9 +1444,7 @@ class Simulation:
 
         dft_freqs = []
         for dftf in self.dft_objects:
-            dft_freqs.append(dftf.freq[0])
-            dft_freqs.append(dftf.freq[-1])
-
+            dft_freqs.extend((dftf.freq[0], dftf.freq[-1]))
         warn_src = (
             "Note: your sources include frequencies outside the range of validity of the "
             + "material models. This is fine as long as you eventually only look at outputs "
@@ -1471,7 +1466,7 @@ class Simulation:
     def _create_grid_volume(self, k: Vector3Type = None):
         dims = self._infer_dimensions(k)
 
-        if dims == 0 or dims == 1:
+        if dims in [0, 1]:
             gv = mp.vol1d(self.cell_size.z, self.resolution)
         elif dims == 2:
             self.dimensions = 2
@@ -1515,7 +1510,7 @@ class Simulation:
         return sym
 
     def _get_dft_volumes(self) -> List[Volume]:
-        volumes = [
+        return [
             self._volume_from_kwargs(
                 vol=r.where if hasattr(r, "where") else None,
                 center=r.center,
@@ -1525,17 +1520,15 @@ class Simulation:
             for r in dft.regions
         ]
 
-        return volumes
-
     def _boundaries_to_vols_1d(self, boundaries) -> List[Volume]:
         v1 = []
 
         for bl in boundaries:
             cen = mp.Vector3(z=(self.cell_size.z / 2) - (0.5 * bl.thickness))
             sz = mp.Vector3(z=bl.thickness)
-            if bl.side == mp.High or bl.side == mp.ALL:
+            if bl.side in [mp.High, mp.ALL]:
                 v1.append(self._volume_from_kwargs(center=cen, size=sz))
-            if bl.side == mp.Low or bl.side == mp.ALL:
+            if bl.side in [mp.Low, mp.ALL]:
                 v1.append(self._volume_from_kwargs(center=-1 * cen, size=sz))
 
         return v1

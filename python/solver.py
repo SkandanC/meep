@@ -552,10 +552,7 @@ class ModeSolver:
                     [gap_size, br_cur_max_f, br_rest_min_f] + gaps,
                 )
 
-        if not br_data:
-            return []
-        else:
-            return ogaps(br_data[0], br_data[1:], 1, [])
+        return ogaps(br_data[0], br_data[1:], 1, []) if br_data else []
 
     # Return the frequency gap from the band #lower-band to the band
     # #(lower-band+1), as a percentage of mid-gap frequency.  The "gap"
@@ -585,11 +582,10 @@ class ModeSolver:
 
         if index >= num or index < 0:
             return (len(l), [])
-        else:
-            block_size = (len(l) + num - 1) // num
-            start = index * block_size
-            length = min(block_size, (len(l) - index * block_size))
-            return (start, list_sub(l, start, length, 0, []))
+        block_size = (len(l) + num - 1) // num
+        start = index * block_size
+        length = min(block_size, (len(l) - index * block_size))
+        return (start, list_sub(l, start, length, 0, []))
 
     def get_lattice(self):
         if self.mode_solver is None:
@@ -835,10 +831,9 @@ class ModeSolver:
             print(fmt.format(num_runs, min_iters, max_iters, mean_iters), end="")
 
         sorted_iters = sorted(self.eigensolver_iters)
-        idx1 = num_runs // 2
-        idx2 = ((num_runs + 1) // 2) - 1
-        median_iters = 0.5 * (sorted_iters[idx1] + sorted_iters[idx2])
         if verbosity.mpb > 0:
+            idx2 = ((num_runs + 1) // 2) - 1
+            median_iters = 0.5 * (sorted_iters[num_runs // 2] + sorted_iters[idx2])
             print(f", median = {median_iters}")
 
         mean_flops = self.eigensolver_flops / (num_runs * mean_iters)
@@ -875,9 +870,7 @@ class ModeSolver:
 
             return divby(divby(divby(divby(n, 2), 3), 5), 7) == 1
 
-        if is_factor2357(n):
-            return n
-        return self.next_factor2357(n + 1)
+        return n if is_factor2357(n) else self.next_factor2357(n + 1)
 
     def init_params(self, p, reset_fields):
         self.mode_solver.init(p, reset_fields, self.geometry, self.default_material)
@@ -1025,11 +1018,7 @@ class ModeSolver:
             mp.reciprocal_to_cartesian(kdir, lat).unit(), lat
         )
 
-        if type(korig_and_kdir) is list:
-            korig = korig_and_kdir[0]
-        else:
-            korig = mp.Vector3()
-
+        korig = korig_and_kdir[0] if type(korig_and_kdir) is list else mp.Vector3()
         # k0s is a list caching the best k value found for each band:
         if type(kmag_guess) is list:
             k0s = kmag_guess
@@ -1042,7 +1031,7 @@ class ModeSolver:
         def rootfun(b):
             def _rootfun(k):
                 # First, look in the cached table
-                tab_val = bktab.get((b, k), None)
+                tab_val = bktab.get((b, k))
                 if tab_val:
                     if verbosity.mpb > 0:
                         print(f"find-k {b} at {k}: {tab_val[0]} (cached)")
@@ -1059,7 +1048,7 @@ class ModeSolver:
                         self.freqs[band_min - 1 :],
                         v[band_min - 1 :],
                     ):
-                        tabval = bktab.get((_b, k0s[_b - band_min]), None)
+                        tabval = bktab.get((_b, k0s[_b - band_min]))
 
                         if not tabval or abs(_f - omega) < abs(tabval[0]):
                             k0s[_b - band_min + 1] = k

@@ -22,12 +22,8 @@ def constraint_connectivity(
     rho = np.reshape(rho, (nz, ny, nx))
     n = nx * ny * nz
 
-    if ny == 1:
-        path = nx * nz / 2
-        phi = 0.5 * path * path / cond_s  # estimate of warmest connected structure
-    else:
-        path = nx * ny * nz / 4
-        phi = 0.5 * path * path / cond_s
+    path = nx * nz / 2 if ny == 1 else nx * ny * nz / 4
+    phi = 0.5 * path * path / cond_s  # estimate of warmest connected structure
     if not thresh:
         thresh = phi
 

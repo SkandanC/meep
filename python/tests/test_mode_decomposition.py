@@ -345,7 +345,7 @@ class TestModeDecomposition(unittest.TestCase):
                     )
                     if m_x == 0 and m_y == 0:
                         Rsum += Rmode
-                    elif (m_x != 0 and m_y == 0) or (m_x == 0 and m_y != 0):
+                    elif m_x != 0 and m_y == 0 or m_x == 0:
                         Rsum += 2 * Rmode
                     else:
                         Rsum += 4 * Rmode
@@ -377,7 +377,7 @@ class TestModeDecomposition(unittest.TestCase):
                     )
                     if m_x == 0 and m_y == 0:
                         Tsum += Tmode
-                    elif (m_x != 0 and m_y == 0) or (m_x == 0 and m_y != 0):
+                    elif m_x != 0 and m_y == 0 or m_x == 0:
                         Tsum += 2 * Tmode
                     else:
                         Tsum += 4 * Tmode
