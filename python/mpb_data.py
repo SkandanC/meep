@@ -220,7 +220,7 @@ class MPBData:
             converted.append(complex_out)
 
         result = np.zeros(np.prod(out_dims) * 3, np.complex128)
-        result[0::3] = converted[0]
+        result[::3] = converted[0]
         result[1::3] = converted[1]
         result[2::3] = converted[2]
 

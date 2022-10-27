@@ -198,7 +198,7 @@ if __name__ == "__main__":
 
     plt.plot(dipole_height, exteff_cyl, "bo-", label="cylindrical")
     plt.plot(dipole_height, exteff_3D, "ro-", label="3D Cartesian")
-    plt.xlabel(f"height of dipole above ground plane " f"(fraction of layer thickness)")
+    plt.xlabel('height of dipole above ground plane (fraction of layer thickness)')
     plt.ylabel("extraction efficiency")
     plt.legend()
 

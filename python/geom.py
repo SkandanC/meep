@@ -40,9 +40,9 @@ class Vector3:
         Create a new `Vector3` with the given components. All three components default to
         zero. This can also be represented simply as `(x,y,z)` or `[x,y,z]`.
         """
-        self.x = float(x) if type(x) is int else x
-        self.y = float(y) if type(y) is int else y
-        self.z = float(z) if type(z) is int else z
+        self.x = x
+        self.y = y
+        self.z = z
 
     def __eq__(self, other):
         """
@@ -1638,9 +1638,9 @@ def geometric_objects_lattice_duplicates(lat, go_list, *usize):
     b2 = lat_to_lattice(mp.Vector3(0, u2, 0))
     b3 = lat_to_lattice(mp.Vector3(0, 0, u3))
 
-    n1 = math.ceil((s.x if s.x else 1e-20) / u1)
-    n2 = math.ceil((s.y if s.y else 1e-20) / u2)
-    n3 = math.ceil((s.z if s.z else 1e-20) / u3)
+    n1 = math.ceil((s.x or 1e-20) / u1)
+    n2 = math.ceil((s.y or 1e-20) / u2)
+    n3 = math.ceil((s.z or 1e-20) / u3)
 
     min3 = -math.floor((n3 - 1) / 2)
     max3 = math.ceil((n3 - 1) / 2)
@@ -1662,7 +1662,7 @@ def memoize(f):
     f_memo_tab = {}
 
     def _mem(y=None):
-        tab_val = f_memo_tab.get(y, None)
+        tab_val = f_memo_tab.get(y)
         if tab_val:
             return tab_val
 

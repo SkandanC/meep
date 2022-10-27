@@ -95,12 +95,11 @@ def filter_dict(dict_to_filter: dict, func_with_kwargs: Callable) -> dict:
         # Python2 ...
         filter_keys = inspect.getargspec(func_with_kwargs)[0]
 
-    filtered_dict = {
+    return {
         filter_key: dict_to_filter[filter_key]
         for filter_key in filter_keys
         if filter_key in dict_to_filter
     }
-    return filtered_dict
 
 
 # ------------------------------------------------------- #
@@ -126,15 +125,8 @@ def place_label(
     alpha = label_parameters["label_alpha"]
     color = label_parameters["label_color"]
 
-    if x > centerx:
-        xtext = -offset
-    else:
-        xtext = offset
-    if y > centery:
-        ytext = -offset
-    else:
-        ytext = offset
-
+    xtext = -offset if x > centerx else offset
+    ytext = -offset if y > centery else offset
     ax.annotate(
         label_text,
         xy=(x, y),
@@ -186,11 +178,11 @@ def intersect_volume_volume(volume1: Volume, volume2: Volume) -> List[Vector3]:
     L = np.max([L1, L2], axis=0)
 
     # For single points we have to check manually
-    if np.all(U - L == 0):
-        if (not volume1.pt_in_volume(Vector3(*U))) or (
-            not volume2.pt_in_volume(Vector3(*U))
-        ):
-            return []
+    if np.all(U - L == 0) and (
+        (not volume1.pt_in_volume(Vector3(*U)))
+        or (not volume2.pt_in_volume(Vector3(*U)))
+    ):
+        return []
 
     # Check for two volumes that don't intersect
     if np.any(U - L < 0):
@@ -200,9 +192,7 @@ def intersect_volume_volume(volume1: Volume, volume2: Volume) -> List[Vector3]:
     vertices = []
     for x_vals in [L[0], U[0]]:
         for y_vals in [L[1], U[1]]:
-            for z_vals in [L[2], U[2]]:
-                vertices.append(Vector3(x_vals, y_vals, z_vals))
-
+            vertices.extend(Vector3(x_vals, y_vals, z_vals) for z_vals in [L[2], U[2]])
     # Remove any duplicate points caused by coplanar lines
     vertices = [
         vertices[i] for i, x in enumerate(vertices) if x not in vertices[i + 1 :]
@@ -226,14 +216,13 @@ def get_2D_dimensions(sim: Simulation, output_plane: Volume) -> Tuple[Vector3, V
         plane_center, plane_size = (output_plane.center, output_plane.size)
     elif sim.output_volume:
         plane_center, plane_size = mp.get_center_and_size(sim.output_volume)
+    elif (sim.dimensions == mp.CYLINDRICAL) or sim.is_cylindrical:
+        plane_center, plane_size = (
+            sim.geometry_center + Vector3(sim.cell_size.x / 2),
+            sim.cell_size,
+        )
     else:
-        if (sim.dimensions == mp.CYLINDRICAL) or sim.is_cylindrical:
-            plane_center, plane_size = (
-                sim.geometry_center + Vector3(sim.cell_size.x / 2),
-                sim.cell_size,
-            )
-        else:
-            plane_center, plane_size = (sim.geometry_center, sim.cell_size)
+        plane_center, plane_size = (sim.geometry_center, sim.cell_size)
     plane_volume = Volume(center=plane_center, size=plane_size)
 
     if plane_size.x != 0 and plane_size.y != 0 and plane_size.z != 0:
@@ -490,11 +479,7 @@ def plot_eps(
         sim_center, sim_size, sim.is_cylindrical
     )
 
-    if eps_parameters["resolution"]:
-        grid_resolution = eps_parameters["resolution"]
-    else:
-        grid_resolution = sim.resolution
-
+    grid_resolution = eps_parameters["resolution"] or sim.resolution
     Nx = int((xmax - xmin) * grid_resolution + 1)
     Ny = int((ymax - ymin) * grid_resolution + 1)
     Nz = int((zmax - zmin) * grid_resolution + 1)
@@ -510,10 +495,12 @@ def plot_eps(
     elif sim_size.y == 0:
         # Plot x on x axis, z on y axis (XZ plane)
         extent = [xmin, xmax, zmin, zmax]
-        if (sim.dimensions == mp.CYLINDRICAL) or sim.is_cylindrical:
-            xlabel = "R"
-        else:
-            xlabel = "X"
+        xlabel = (
+            "R"
+            if (sim.dimensions == mp.CYLINDRICAL) or sim.is_cylindrical
+            else "X"
+        )
+
         ylabel = "Z"
         xtics = np.linspace(xmin, xmax, Nx)
         ytics = np.array([sim_center.y])
@@ -746,8 +733,7 @@ def plot_fields(
     else:
         field_parameters = dict(default_field_parameters, **field_parameters)
 
-    # user specifies a field component
-    if fields in [
+    if fields not in [
         mp.Ex,
         mp.Ey,
         mp.Ez,
@@ -760,35 +746,36 @@ def plot_fields(
         mp.Hy,
         mp.Hz,
     ]:
-        # Get domain measurements
-        sim_center, sim_size = get_2D_dimensions(sim, output_plane)
-
-        xmin, xmax, ymin, ymax, zmin, zmax = box_vertices(
-            sim_center, sim_size, sim.is_cylindrical
-        )
-
-        if sim_size.x == 0:
-            # Plot y on x axis, z on y axis (YZ plane)
-            extent = [ymin, ymax, zmin, zmax]
-            xlabel = "Y"
-            ylabel = "Z"
-        elif sim_size.y == 0:
-            # Plot x on x axis, z on y axis (XZ plane)
-            extent = [xmin, xmax, zmin, zmax]
-            if (sim.dimensions == mp.CYLINDRICAL) or sim.is_cylindrical:
-                xlabel = "R"
-            else:
-                xlabel = "X"
-            ylabel = "Z"
-        elif sim_size.z == 0:
-            # Plot x on x axis, y on y axis (XY plane)
-            extent = [xmin, xmax, ymin, ymax]
-            xlabel = "X"
-            ylabel = "Y"
-        fields = sim.get_array(center=sim_center, size=sim_size, component=fields)
-    else:
         raise ValueError("Please specify a valid field component (mp.Ex, mp.Ey, ...")
 
+    # Get domain measurements
+    sim_center, sim_size = get_2D_dimensions(sim, output_plane)
+
+    xmin, xmax, ymin, ymax, zmin, zmax = box_vertices(
+        sim_center, sim_size, sim.is_cylindrical
+    )
+
+    if sim_size.x == 0:
+        # Plot y on x axis, z on y axis (YZ plane)
+        extent = [ymin, ymax, zmin, zmax]
+        xlabel = "Y"
+        ylabel = "Z"
+    elif sim_size.y == 0:
+        # Plot x on x axis, z on y axis (XZ plane)
+        extent = [xmin, xmax, zmin, zmax]
+        xlabel = (
+            "R"
+            if (sim.dimensions == mp.CYLINDRICAL) or sim.is_cylindrical
+            else "X"
+        )
+
+        ylabel = "Z"
+    elif sim_size.z == 0:
+        # Plot x on x axis, y on y axis (XY plane)
+        extent = [xmin, xmax, ymin, ymax]
+        xlabel = "X"
+        ylabel = "Y"
+    fields = sim.get_array(center=sim_center, size=sim_size, component=fields)
     fields = field_parameters["post_process"](fields)
     if (sim.dimensions == mp.CYLINDRICAL) or sim.is_cylindrical:
         fields = np.flipud(fields)
@@ -907,8 +894,7 @@ def plot3D(sim: Simulation):
     ztics = np.linspace(zmin, zmax, Nz)
 
     eps_data = sim.get_epsilon_grid(xtics, ytics, ztics)
-    s = mlab.contour3d(eps_data, colormap="YlGnBu")
-    return s
+    return mlab.contour3d(eps_data, colormap="YlGnBu")
 
 
 def visualize_chunks(sim: Simulation):
@@ -1195,7 +1181,20 @@ class Animate2D:
     def __call__(self, sim: Simulation, todo: str) -> None:
         from matplotlib import pyplot as plt
 
-        if todo == "step":
+        if todo == "finish":
+            # Normalize the frames, if requested, and export
+            if self.normalize and mp.am_master():
+                if mp.verbosity.meep > 0:
+                    print("Normalizing field data...")
+                fields = np.array(self.cumulative_fields) / np.max(
+                    np.abs(self.cumulative_fields), axis=(0, 1, 2)
+                )
+                for k in range(len(self.cumulative_fields)):
+                    self.ax.images[-1].set_data(fields[k, :, :])
+                    self.ax.images[-1].set_clim(vmin=-0.8, vmax=0.8)
+                    self.grab_frame()
+            return
+        elif todo == "step":
             # Initialize the plot
             if not self.init:
                 filtered_plot2D = filter_dict(self.customization_args, plot2D)
@@ -1219,7 +1218,7 @@ class Animate2D:
                     # when calling with no 'ax', returns array of epsilon data
                     eps = plot_eps(sim=sim, **filtered_plot_eps)
                     if mp.am_master():
-                        eps_idx = -1 if not self.fields else -2
+                        eps_idx = -2 if self.fields else -1
                         self.ax.images[eps_idx].set_data(eps)
                 # Need to check if None because mp.Ex == 0
                 if self.fields is not None:
@@ -1242,7 +1241,7 @@ class Animate2D:
                 # Redraw the current figure if requested
                 # For some reason, plt.pause() causes ipympl to redraw the same figure, and we end up with
                 # a new copy of the figure every time this class is called.
-                plt.pause(0.05) if not self.nb else sleep(0.05)
+                sleep(0.05) if self.nb else plt.pause(0.05)
 
             if self.normalize and mp.am_master():
                 # Save fields as a numpy array to be normalized
@@ -1252,19 +1251,6 @@ class Animate2D:
                 # Capture figure as a png, but store the png in memory
                 # to avoid writing to disk.
                 self.grab_frame()
-            return
-        elif todo == "finish":
-            # Normalize the frames, if requested, and export
-            if self.normalize and mp.am_master():
-                if mp.verbosity.meep > 0:
-                    print("Normalizing field data...")
-                fields = np.array(self.cumulative_fields) / np.max(
-                    np.abs(self.cumulative_fields), axis=(0, 1, 2)
-                )
-                for k in range(len(self.cumulative_fields)):
-                    self.ax.images[-1].set_data(fields[k, :, :])
-                    self.ax.images[-1].set_clim(vmin=-0.8, vmax=0.8)
-                    self.grab_frame()
             return
 
     @property
@@ -1334,7 +1320,7 @@ class Animate2D:
             fill_frames = self._embedded_frames(self._saved_frames, self.frame_format)
             Nframes = len(self._saved_frames)
             mode_dict = dict(once_checked="", loop_checked="", reflect_checked="")
-            mode_dict[self.default_mode + "_checked"] = "checked"
+            mode_dict[f"{self.default_mode}_checked"] = "checked"
 
             interval = 1000 // fps
 

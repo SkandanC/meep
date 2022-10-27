@@ -29,8 +29,9 @@ class TestHoleyWvgCavity(ApproxComparisonTestCase):
         geometry = [blk]
 
         geometry.extend(mp.Cylinder(r, center=mp.Vector3(d / 2 + i)) for i in range(3))
-        for i in range(3):
-            geometry.append(mp.Cylinder(r, center=mp.Vector3(d / -2 - i)))
+        geometry.extend(
+            mp.Cylinder(r, center=mp.Vector3(d / -2 - i)) for i in range(3)
+        )
 
         self.sim = mp.Simulation(
             cell_size=cell,

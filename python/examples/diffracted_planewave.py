@@ -122,7 +122,7 @@ def binary_grating_diffraction(gp, gh, gdc, theta):
     bands = range(1, nm_t + 1)
 
     if theta_in == 0:
-        orders = range(0, nm_t)
+        orders = range(nm_t)
     else:
         orders = range(
             int(np.ceil((-fcen - k.y) * gp)), int(np.floor((fcen - k.y) * gp)) + 1
